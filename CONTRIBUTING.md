@@ -8,7 +8,7 @@ npm run build
 npm test
 ```
 
-Node 18+. Pure TypeScript, no browser dependencies.
+Node 20+. Pure TypeScript, no browser dependencies.
 
 ## Adding a new fingerprint API
 

@@ -55,10 +55,18 @@
     "forensics",
     "reverse-engineering"
   ],
-  "author": "",
+  "author": "Tyler Richards <tyler@richards.foo>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/StackedQueries/script2builtins.git"
+  },
+  "bugs": {
+    "url": "https://github.com/StackedQueries/script2builtins/issues"
+  },
+  "homepage": "https://github.com/StackedQueries/script2builtins#readme",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
     "acorn": "^8.12.1",

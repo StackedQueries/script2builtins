@@ -35,7 +35,7 @@ npm install -g script2builtins
 npm install script2builtins
 ```
 
-Requires Node 18+.
+Requires Node 20+.
 
 ## CLI
 
