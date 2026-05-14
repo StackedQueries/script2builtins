@@ -1,0 +1,95 @@
+import type { ApiDefinition } from "../types.js";
+
+export const webrtcApis: ApiDefinition[] = [
+  {
+    key: "RTCPeerConnection",
+    category: "webrtc",
+    severity: "high",
+    botDetectionTell: true,
+    description: "WebRTC entry point. Used both for STUN-based local-IP leaks and to fingerprint the codec list (SDP).",
+    evasion: "Either disable WebRTC at the browser level (--disable-features=WebRtc, or about:config in Firefox) or override createOffer/createAnswer to strip ICE candidates. Detectors notice when RTCPeerConnection exists but produces no candidates.",
+  },
+  {
+    key: "webkitRTCPeerConnection",
+    category: "webrtc",
+    severity: "high",
+    botDetectionTell: true,
+    description: "Legacy prefixed WebRTC.",
+  },
+  {
+    key: "mozRTCPeerConnection",
+    category: "webrtc",
+    severity: "medium",
+    description: "Firefox-prefixed legacy WebRTC.",
+  },
+  {
+    key: "*.createDataChannel",
+    category: "webrtc",
+    severity: "medium",
+    description: "Cheap way to force ICE candidate gathering without needing media permissions.",
+  },
+  {
+    key: "*.createOffer",
+    category: "webrtc",
+    severity: "medium",
+    description: "Initiates SDP offer; SDP body contains codec/extension fingerprint material.",
+  },
+  {
+    key: "*.setLocalDescription",
+    category: "webrtc",
+    severity: "medium",
+    description: "Triggers ICE gathering — the step that surfaces local IP candidates.",
+  },
+  {
+    key: "RTCSessionDescription",
+    category: "webrtc",
+    severity: "low",
+    description: "SDP wrapper; rarely the focus on its own.",
+  },
+  {
+    key: "RTCIceCandidate",
+    category: "webrtc",
+    severity: "medium",
+    description: "Candidate parsing; presence near a regex over `candidate:` lines indicates IP leak harvesting.",
+  },
+  {
+    key: "*.createAnswer",
+    category: "webrtc",
+    severity: "medium",
+    description: "RTCPeerConnection.createAnswer. SDP answer body contains codec/extension fingerprint material.",
+  },
+  {
+    key: "*.setRemoteDescription",
+    category: "webrtc",
+    severity: "low",
+    description: "Counterpart to setLocalDescription; rarely the fingerprint target on its own.",
+  },
+  {
+    key: "RTCRtpSender",
+    category: "webrtc",
+    severity: "high",
+    botDetectionTell: true,
+    description: "RTCRtpSender.getCapabilities('video'/'audio') returns codecs/headerExtensions/fec without ever instantiating a connection — a fast, low-noise codec-fingerprint surface that bypasses SDP harvesting.",
+    evasion: "Override RTCRtpSender.getCapabilities as a static method on the constructor; keep the returned shape (codecs[], headerExtensions[]) intact.",
+  },
+  {
+    key: "RTCRtpReceiver",
+    category: "webrtc",
+    severity: "high",
+    botDetectionTell: true,
+    description: "Sibling of RTCRtpSender.getCapabilities; same codec/extension fingerprint axis from the receive side.",
+  },
+  {
+    key: "RTCRtpTransceiver",
+    category: "webrtc",
+    severity: "low",
+    description: "Capability probe — presence pins WebRTC unified-plan support.",
+  },
+  {
+    key: "*.getCapabilities",
+    category: "webrtc",
+    severity: "high",
+    botDetectionTell: true,
+    description: "Aliased static-capability probe (var s = RTCRtpSender; s.getCapabilities('video')).",
+  },
+];

@@ -1,0 +1,40 @@
+title: script2builtins
+description: Forensic static analyzer for bot-detection / browser-fingerprinting JavaScript. AST-driven catalog matching, alias resolution, and exfiltration tracing.
+theme: jekyll-theme-cayman
+markdown: kramdown
+kramdown:
+  syntax_highlighter: rouge
+  input: GFM
+  hard_wrap: false
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+navigation:
+  - title: Overview
+    url: /
+  - title: Architecture
+    url: /architecture/
+  - title: Analysis flow
+    url: /analysis-flow/
+  - title: Payload tracer
+    url: /payload-tracer/
+  - title: Catalog reference
+    url: /catalog/
+  - title: Recipes
+    url: /recipes/
+  - title: Limits
+    url: /limits/
+  - title: Design review
+    url: /design-review/
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+
+permalink: /:path/

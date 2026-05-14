@@ -1,0 +1,99 @@
+import type { ApiDefinition } from "../types.js";
+
+export const timingApis: ApiDefinition[] = [
+  {
+    key: "performance.now",
+    category: "timing",
+    severity: "medium",
+    description: "High-resolution clock. Used both for timing micro-benchmarks (cache, JIT, GC behaviour) and to detect breakpoints (huge gaps).",
+    evasion: "Headless detectors use it to measure JS execution speed under expected hardware. Hard to spoof without breaking site functionality.",
+  },
+  {
+    key: "performance.timing",
+    category: "timing",
+    severity: "low",
+    description: "Deprecated navigation timing object.",
+  },
+  {
+    key: "performance.timeOrigin",
+    category: "timing",
+    severity: "low",
+    description: "Origin of performance.now() timestamps.",
+  },
+  {
+    key: "performance.memory",
+    category: "timing",
+    severity: "medium",
+    description: "Chrome-only heap stats (jsHeapSizeLimit, totalJSHeapSize, usedJSHeapSize). Stable per-platform; absence on a Chrome UA is a tell.",
+    botDetectionTell: true,
+  },
+  {
+    key: "performance.getEntries",
+    category: "timing",
+    severity: "low",
+    description: "Resource timing entries — used to confirm that expected page resources actually loaded.",
+  },
+  {
+    key: "performance.getEntriesByType",
+    category: "timing",
+    severity: "low",
+    description: "Filtered resource timing.",
+  },
+  {
+    key: "Date.now",
+    category: "timing",
+    severity: "info",
+    description: "Wall-clock millis. Compared against performance.now to detect time desync.",
+  },
+  {
+    key: "*.getTimezoneOffset",
+    category: "timing",
+    severity: "medium",
+    description: "Timezone offset in minutes. Cross-checked with Intl.DateTimeFormat().resolvedOptions().timeZone and Accept-Language hints.",
+    botDetectionTell: true,
+    evasion: "Spoof both Date.prototype.getTimezoneOffset AND Intl.DateTimeFormat to a coherent IANA zone, or use --js-flags='--timezone=...' / TZ env at launch.",
+  },
+  {
+    key: "Date",
+    category: "timing",
+    severity: "info",
+    description: "Date constructor. new Date().toString() exposes the locale-aware TZ abbreviation (e.g., 'GMT-0800 (Pacific Standard Time)') — a cheap TZ tell distinct from Intl.DateTimeFormat.",
+  },
+  {
+    key: "Date.parse",
+    category: "timing",
+    severity: "info",
+    description: "Date parser; rarely fingerprinted.",
+  },
+  {
+    key: "Date.prototype.toString",
+    category: "timing",
+    severity: "medium",
+    description: "Yields locale-aware long-form timezone abbreviation. Detectors regex-extract the parenthesized TZ name (e.g., 'Pacific Standard Time') and cross-check with Intl.DateTimeFormat.",
+    botDetectionTell: true,
+  },
+  {
+    key: "*.getFullYear",
+    category: "timing",
+    severity: "info",
+    description: "Date getter; common in DST winter/summer offset probes.",
+  },
+  {
+    key: "requestAnimationFrame",
+    category: "timing",
+    severity: "low",
+    description: "Frame-cadence access. Detectors measure callback intervals to detect off-screen / headless rendering (no display = irregular cadence).",
+  },
+  {
+    key: "*.measureUserAgentSpecificMemory",
+    category: "timing",
+    severity: "medium",
+    description: "performance.measureUserAgentSpecificMemory(). Chrome-only (cross-origin-isolated context). Exposes per-context memory class — both a UA tell and a finer alternative to performance.memory.",
+  },
+  {
+    key: "performance.timeOrigin",
+    category: "timing",
+    severity: "low",
+    description: "Origin of performance.now() timestamps. Together with Date.now they let detectors verify timer monotonicity / detect clock skew.",
+  },
+];
