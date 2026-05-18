@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { analyze } from "./index.js";
+import { parse } from "./analyze/parse.js";
 import { renderText } from "./report/text.js";
 import type { Severity } from "./types.js";
 
@@ -20,6 +21,10 @@ interface CliFlags {
   fromStdin: boolean;
   help: boolean;
   version: boolean;
+  /** Hard cap on input size in bytes (truncate to this). Null = no cap. */
+  maxBytes: number | null;
+  /** When true, only run the parser and report parse status. */
+  parseOnly: boolean;
 }
 
 const HELP = `script2builtins — forensic analyzer for fingerprinting JS
@@ -35,6 +40,8 @@ Options:
   --category NAME[,NAME...]    Restrict findings to these categories.
   --no-hits                    Hide per-finding source evidence.
   --max-hits N                 Cap evidence rows per finding (default 5).
+  --max-bytes N                Truncate each input to N bytes before parsing.
+  --parse-only                 Only run the parser; emit a one-line ok/fail.
   --include-unknown            Emit unmatched accesses too (noisy).
   --no-color                   Disable ANSI colours.
   --source-type script|module  Force parse mode.
@@ -64,6 +71,8 @@ function parseArgs(argv: string[]): CliFlags {
     fromStdin: false,
     help: false,
     version: false,
+    maxBytes: null,
+    parseOnly: false,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -100,6 +109,16 @@ function parseArgs(argv: string[]): CliFlags {
       case "--sinks-only":
         flags.sinksOnly = true;
         break;
+      case "--parse-only":
+        flags.parseOnly = true;
+        break;
+      case "--max-bytes": {
+        const v = argv[++i];
+        const n = Number(v);
+        if (!Number.isFinite(n) || n <= 0) die(`--max-bytes expects a positive integer, got ${v}`);
+        flags.maxBytes = Math.floor(n);
+        break;
+      }
       case "--min-severity": {
         const v = argv[++i];
         if (!isSeverity(v)) die(`--min-severity expects high|medium|low|info, got ${v}`);
@@ -152,6 +171,12 @@ function parseArgs(argv: string[]): CliFlags {
           flags.sourceType = v;
           break;
         }
+        if (a.startsWith("--max-bytes=")) {
+          const n = Number(a.slice("--max-bytes=".length));
+          if (!Number.isFinite(n) || n <= 0) die(`--max-bytes expects a positive integer, got ${a}`);
+          flags.maxBytes = Math.floor(n);
+          break;
+        }
         if (a.startsWith("-")) die(`unknown flag: ${a}`);
         flags.files.push(a);
       }
@@ -197,12 +222,39 @@ async function main(): Promise<void> {
 
   const inputs: { name: string; source: string }[] = [];
   if (wantStdin) {
-    const source = await readStdin();
+    const source = applyMaxBytes(await readStdin(), flags.maxBytes);
     inputs.push({ name: "<stdin>", source });
   }
   for (const f of flags.files) {
-    const source = await readFile(f, "utf8");
+    const source = applyMaxBytes(await readFile(f, "utf8"), flags.maxBytes);
     inputs.push({ name: basename(f), source });
+  }
+
+  // --parse-only short-circuits the full pipeline. Useful for validating
+  // that a 1-3MB Cloudflare / DataDome blob actually parses before
+  // paying the walk cost.
+  if (flags.parseOnly) {
+    let exitCode = 0;
+    const summaries = inputs.map((input) => {
+      const { info } = parse(input.source, flags.sourceType);
+      if (!info.ok) exitCode = 1;
+      return {
+        name: input.name,
+        bytes: Buffer.byteLength(input.source, "utf8"),
+        parse: info,
+      };
+    });
+    if (flags.format === "json") {
+      const payload = summaries.length === 1 ? summaries[0] : summaries;
+      process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
+    } else {
+      for (const s of summaries) {
+        const status = s.parse.ok ? `ok (${s.parse.sourceType})` : "FAILED";
+        process.stdout.write(`${s.name}\t${s.bytes}B\t${status}\n`);
+        if (!s.parse.ok) for (const e of s.parse.errors) process.stdout.write(`  ! ${e}\n`);
+      }
+    }
+    process.exit(exitCode);
   }
 
   const reports = inputs.map((input) =>
@@ -242,6 +294,23 @@ async function main(): Promise<void> {
 
 function getVersion(): string {
   return "script2builtins 0.1.0";
+}
+
+/**
+ * Truncate `source` to `max` bytes (UTF-8). Returns the original string
+ * when `max` is null or the source already fits.
+ *
+ * We slice on a byte boundary, not a code-point boundary, because the
+ * intent of `--max-bytes` is "bound a runaway input" — losing the
+ * trailing partial code point is preferable to scanning the whole
+ * string. The parser will fall back to script mode on the truncated
+ * tail when the truncation happens mid-token.
+ */
+function applyMaxBytes(source: string, max: number | null): string {
+  if (max === null) return source;
+  const buf = Buffer.from(source, "utf8");
+  if (buf.length <= max) return source;
+  return buf.subarray(0, max).toString("utf8");
 }
 
 main().catch((err: unknown) => {

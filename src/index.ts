@@ -7,11 +7,22 @@
  * the {@link ALL_APIS} catalog.
  */
 
-import type { AnalyzeOptions, Report, Finding, NetworkSink } from "./types.js";
+import type {
+  AnalyzeOptions,
+  Report,
+  Finding,
+  NetworkSink,
+  StructuralFinding,
+  DynamicHazard,
+} from "./types.js";
 import { parse } from "./analyze/parse.js";
 import { walkProgram } from "./analyze/walk.js";
 import { matchAccesses } from "./analyze/match.js";
 import { scanSinks } from "./analyze/sinks.js";
+import { detectVmBytecode } from "./analyze/vm-detector.js";
+import { detectConsistencyChecks, detectHighResTimer } from "./analyze/structural.js";
+import { detectCognitiveHoneypots } from "./analyze/honeypots.js";
+import { detectFaviconCacheProbes } from "./analyze/favicons.js";
 import { ALL_APIS, watchedRoots } from "./knowledge/index.js";
 
 // ─── Public types ────────────────────────────────────────────────────────────
@@ -30,6 +41,8 @@ export type {
   NetworkSinkKind,
   PayloadInfo,
   PayloadEntry,
+  StructuralFinding,
+  SokLayer,
 } from "./types.js";
 
 // ─── Public modules ──────────────────────────────────────────────────────────
@@ -49,6 +62,12 @@ export {
   sensorApis,
   mediaPermissionsApis,
   eventsDomApis,
+  consoleApis,
+  extensionsApis,
+  knownEndpoints,
+  classifyEndpointUrl,
+  classifyEndpointPayloadKeys,
+  type KnownEndpoint,
 } from "./knowledge/index.js";
 
 export { parse } from "./analyze/parse.js";
@@ -57,6 +76,10 @@ export { walkProgram } from "./analyze/walk.js";
 export type { WalkResult } from "./analyze/walk.js";
 export { matchAccesses } from "./analyze/match.js";
 export { scanSinks } from "./analyze/sinks.js";
+export { detectVmBytecode } from "./analyze/vm-detector.js";
+export { detectConsistencyChecks, detectHighResTimer } from "./analyze/structural.js";
+export { detectCognitiveHoneypots } from "./analyze/honeypots.js";
+export { detectFaviconCacheProbes } from "./analyze/favicons.js";
 export {
   buildAliases,
   resolveChain,
@@ -104,6 +127,7 @@ export function analyze(source: string, options: AnalyzeOptions = {}): Report {
       byCategory: {},
       hazards: [],
       networkSinks: [],
+      structural: [],
       unknownAccesses: [],
       summary: emptySummary(),
     };
@@ -118,8 +142,16 @@ export function analyze(source: string, options: AnalyzeOptions = {}): Report {
   const { findings, unknown } = matchAccesses(accesses, ALL_APIS);
   const networkSinks = scanSinks(program, aliases, { source, apis: ALL_APIS });
 
+  const structural: StructuralFinding[] = [];
+  const vm = detectVmBytecode(program, source);
+  if (vm) structural.push(vm);
+  structural.push(...detectConsistencyChecks(findings));
+  structural.push(...detectHighResTimer(findings));
+  structural.push(...detectCognitiveHoneypots(program, aliases, source));
+  structural.push(...detectFaviconCacheProbes(program, aliases, source));
+
   const byCategory = groupByCategory(findings);
-  const summary = computeSummary({ findings, networkSinks, bytes });
+  const summary = computeSummary({ findings, networkSinks, hazards, structural, bytes });
 
   return {
     source: { name, bytes, lines },
@@ -128,6 +160,7 @@ export function analyze(source: string, options: AnalyzeOptions = {}): Report {
     byCategory,
     hazards,
     networkSinks,
+    structural,
     unknownAccesses: options.includeUnknown ? unknown : [],
     summary,
   };
@@ -142,9 +175,11 @@ function groupByCategory(findings: Finding[]): Record<string, Finding[]> {
 function computeSummary(args: {
   findings: Finding[];
   networkSinks: NetworkSink[];
+  hazards: DynamicHazard[];
+  structural: StructuralFinding[];
   bytes: number;
 }) {
-  const { findings, networkSinks, bytes } = args;
+  const { findings, networkSinks, hazards, structural, bytes } = args;
   let totalAccesses = 0;
   let knownAccesses = 0;
   let botDetectionTells = 0;
@@ -156,8 +191,25 @@ function computeSummary(args: {
     if (f.api.botDetectionTell) botDetectionTells += f.count;
   }
   const leaked = new Set<string>();
+  const providers: Record<string, number> = {};
   for (const s of networkSinks) {
     for (const a of s.payload?.leakedApis ?? []) leaked.add(a.key);
+    if (s.provider) providers[s.provider] = (providers[s.provider] ?? 0) + 1;
+  }
+  const ANTI_DEBUG_KINDS = new Set([
+    "debugger-statement",
+    "timing-delta-probe",
+    "clock-skew-probe",
+    "cpu-pause-probe",
+    "obfuscated-eval",
+  ]);
+  let antiDebugTells = 0;
+  for (const h of hazards) if (ANTI_DEBUG_KINDS.has(h.kind)) antiDebugTells++;
+  let vmBytecodeDetected = false;
+  let consistencyChecks = 0;
+  for (const sf of structural) {
+    if (sf.kind === "vm-bytecode") vmBytecodeDetected = true;
+    if (sf.kind === "consistency-check") consistencyChecks++;
   }
   const kb = bytes / 1024;
   const fingerprintingDensityPerKb = kb > 0 ? +(knownAccesses / kb).toFixed(2) : 0;
@@ -169,6 +221,10 @@ function computeSummary(args: {
     categories: [...cats].sort(),
     sinkCount: networkSinks.length,
     leakedApiCount: leaked.size,
+    providers,
+    vmBytecodeDetected,
+    antiDebugTells,
+    consistencyChecks,
   };
 }
 
@@ -181,6 +237,10 @@ function emptySummary() {
     categories: [] as string[],
     sinkCount: 0,
     leakedApiCount: 0,
+    providers: {} as Record<string, number>,
+    vmBytecodeDetected: false,
+    antiDebugTells: 0,
+    consistencyChecks: 0,
   };
 }
 

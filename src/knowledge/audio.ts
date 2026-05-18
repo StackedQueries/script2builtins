@@ -6,6 +6,7 @@ export const audioApis: ApiDefinition[] = [
     category: "audio",
     severity: "high",
     botDetectionTell: true,
+    layer: "L1a",
     description: "Web Audio API entry point. Combined with OfflineAudioContext for the canonical audio fingerprint.",
     evasion: "Hook AnalyserNode.getFloatFrequencyData / getChannelData to add per-session noise. Pure interception is detectable; perturbation preserves API shape.",
   },
@@ -14,6 +15,7 @@ export const audioApis: ApiDefinition[] = [
     category: "audio",
     severity: "high",
     botDetectionTell: true,
+    layer: "L1a",
     description: "Renders audio offline at full speed. Standard fingerprinting recipe: oscillator → compressor → render → hash output buffer.",
   },
   {

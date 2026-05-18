@@ -92,7 +92,7 @@ export const windowScreenApis: ApiDefinition[] = [
     category: "window",
     severity: "high",
     botDetectionTell: true,
-    description: "Chrome extension runtime. Presence on a non-extension page is normal; absence is a headless tell.",
+    description: "Chrome extension runtime. Presence on a non-extension page is normal; absence is a headless tell. Also the entry point for extension-fingerprinting probes via chrome.runtime.sendMessage / .connect against known extension IDs (Carnus 2020).",
   },
   {
     key: "chrome.loadTimes",

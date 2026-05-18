@@ -92,4 +92,83 @@ export const webrtcApis: ApiDefinition[] = [
     botDetectionTell: true,
     description: "Aliased static-capability probe (var s = RTCRtpSender; s.getCapabilities('video')).",
   },
+
+  // ─── IP-leak & stats surfaces (2020 - Neither Denied nor Exposed Fixing WebRTC) ───
+  // The IP-leak vector is: create RTCPeerConnection → install
+  // onicecandidate handler → call createOffer + setLocalDescription →
+  // the handler fires with `event.candidate.candidate`, a string
+  // containing the local IP. Detect every step.
+  {
+    key: "*.onicecandidate",
+    category: "webrtc",
+    severity: "high",
+    botDetectionTell: true,
+    description: "RTCPeerConnection.onicecandidate handler. THE IP-leak hook: the callback receives ICE candidates including local IP addresses parseable from the SDP candidate line. Read or assignment both worth flagging.",
+    evasion: "Block locally by overriding RTCPeerConnection.prototype.setLocalDescription to never gather host candidates, or use mDNS-only mode (default in modern Chrome — but desktop detectors specifically look for the absence of host candidates as a tell).",
+  },
+  {
+    key: "*.addIceCandidate",
+    category: "webrtc",
+    severity: "medium",
+    description: "RTCPeerConnection.addIceCandidate. Less common as a leak vector, but appears in symmetric setups that round-trip candidates.",
+  },
+  {
+    key: "*.localDescription",
+    category: "webrtc",
+    severity: "high",
+    botDetectionTell: true,
+    description: "RTCPeerConnection.localDescription. SDP body containing every gathered ICE candidate (including local-IP host candidates). Reading the .sdp string and regex-scanning for `candidate:` lines is the standard IP-leak harvest.",
+  },
+  {
+    key: "*.candidate",
+    category: "webrtc",
+    severity: "medium",
+    description: "RTCIceCandidate.candidate. The raw SDP candidate line — contains the local IP. Reading this near a regex over /^candidate:/ is the IP-extraction signature.",
+    botDetectionTell: true,
+  },
+  {
+    key: "*.iceGatheringState",
+    category: "webrtc",
+    severity: "low",
+    description: "RTCPeerConnection.iceGatheringState ('new' | 'gathering' | 'complete'). Polled during IP-leak harvesting to know when to read localDescription.",
+  },
+  {
+    key: "*.iceConnectionState",
+    category: "webrtc",
+    severity: "info",
+    description: "Sibling of iceGatheringState; less commonly load-bearing for fingerprinting.",
+  },
+  {
+    key: "*.getStats",
+    category: "webrtc",
+    severity: "medium",
+    description: "RTCPeerConnection.getStats(). Returns the WebRTC stats dictionary — RTT, jitter, congestion-window samples. Used in 2014/2020 Markov-chain encrypted-traffic-classification work and by some advanced detectors to fingerprint the local network path.",
+    botDetectionTell: true,
+  },
+  {
+    key: "RTCDataChannel",
+    category: "webrtc",
+    severity: "medium",
+    description: "RTCDataChannel constructor reference. Detectors create one to force ICE gathering without media permissions; the channel itself is also a *peer-to-peer exfil sink* that bypasses the conventional fetch/XHR/sendBeacon enumeration.",
+    botDetectionTell: true,
+  },
+  {
+    key: "*.send",
+    category: "webrtc",
+    severity: "low",
+    description: "Generic *.send — fires for WebSocket.send, RTCDataChannel.send, and others. Treat in context: alone it's noisy; in combination with RTCPeerConnection construction it's a P2P exfil sink not visible to the normal HTTP-sink enumeration.",
+  },
+  {
+    key: "*.bufferedAmount",
+    category: "webrtc",
+    severity: "info",
+    description: "RTCDataChannel.bufferedAmount / WebSocket.bufferedAmount. Backpressure probe.",
+  },
+  {
+    key: "*.sdp",
+    category: "webrtc",
+    severity: "medium",
+    description: "RTCSessionDescription.sdp. The full SDP text containing every codec, header extension, and ICE candidate the offer/answer expressed. High-entropy fingerprint axis — the codec ordering alone can pin a UA's actual engine version.",
+    botDetectionTell: true,
+  },
 ];

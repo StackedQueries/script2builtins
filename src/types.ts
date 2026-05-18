@@ -44,6 +44,19 @@ export interface RawAccess {
 }
 
 /**
+ * SoK (Abel) L1–L4 anti-automation layer taxonomy. Used as an optional
+ * tag on {@link ApiDefinition} so reports can cross-walk findings to
+ * the academic literature.
+ *
+ * - `L1a` — Static environmental introspection (UA, screen, plugins).
+ * - `L1b` — Behavioral biometrics (mouse curves, keystroke dynamics).
+ * - `L2`  — Obfuscation / source-level integrity checks.
+ * - `L3`  — Execution traps (anti-logger, anti-debug, console.* hooks).
+ * - `L4`  — Chronometric integrity (timing-delta, clock-skew probes).
+ */
+export type SokLayer = "L1a" | "L1b" | "L2" | "L3" | "L4";
+
+/**
  * One entry in the fingerprinting-API catalog. Catalog files in
  * `src/knowledge/` export arrays of these.
  */
@@ -69,6 +82,15 @@ export interface ApiDefinition {
    * `getContext("2d")` vs `getContext("webgl")`.
    */
   argMatch?: string[];
+  /**
+   * Optional SoK (Abel 2024) anti-automation layer label. Lets the
+   * renderer bucket findings into the field's vendor-neutral vocabulary.
+   * Omitted when the entry doesn't cleanly fit one of L1a/L1b/L2/L3/L4
+   * — most static-introspection entries are L1a by default but only
+   * the most representative ones carry the explicit tag, to keep the
+   * report readable.
+   */
+  layer?: SokLayer;
 }
 
 /** A cataloged API plus the raw accesses that satisfied it. */
@@ -76,6 +98,57 @@ export interface Finding {
   api: ApiDefinition;
   hits: RawAccess[];
   count: number;
+}
+
+/**
+ * Multi-node structural signatures the API catalog can't express.
+ *
+ * - `vm-bytecode`        — script contains a register/stack VM
+ *                          (large numeric Array + switch-dispatched function
+ *                          table). Canonical for Botguard / Kasada blobs.
+ * - `consistency-check`  — script pairs reads of related signals
+ *                          (e.g., `navigator.userAgent` and
+ *                          `navigator.userAgentData.platform`) — a strong
+ *                          signal the script is scoring environment
+ *                          consistency, not just collecting features.
+ * - `cognitive-honeypot` — script constructs a transparent / off-screen
+ *                          DOM element with a click listener attached.
+ *                          The defender's anti-VLM-agent trap from
+ *                          SoK §3.4 (L3): a real user can't click an
+ *                          invisible element, but a vision-based
+ *                          agent's "find the button" pass picks the
+ *                          decoy out of the layout tree and triggers
+ *                          the trap.
+ * - `high-res-timer-construction`
+ *                        — script reconstructs a sub-µs timer out of
+ *                          `SharedArrayBuffer` + `Atomics.wait`/`load`/
+ *                          `store` in lieu of (or alongside) the
+ *                          mitigated `performance.now`. Canonical L4
+ *                          construction from *Fantastic Timers and
+ *                          Where to Find Them* (2017) and *JavaScript
+ *                          Zero* (2018).
+ * - `favicon-cache-probe`
+ *                        — script combines a `<link rel="icon">` href
+ *                          assignment with an `Image` load-time
+ *                          measurement, the canonical favicon-cache
+ *                          persistent-tracking trick from *Tales of
+ *                          FAVICONS and Caches* (2021).
+ */
+export interface StructuralFinding {
+  kind:
+    | "vm-bytecode"
+    | "consistency-check"
+    | "cognitive-honeypot"
+    | "high-res-timer-construction"
+    | "favicon-cache-probe";
+  /** Short human-readable label (e.g., "UA vs UA-CH platform"). */
+  subkind: string;
+  severity: Severity;
+  description: string;
+  /** Structured evidence — what the detector found that triggered the finding. */
+  details: Record<string, unknown>;
+  loc: Location | null;
+  snippet: string;
 }
 
 /** Kinds of dynamic-execution hazards we flag separately. */
@@ -87,7 +160,12 @@ export type DynamicHazardKind =
   | "computed-property"
   | "with-statement"
   | "document-write"
-  | "import-call";
+  | "import-call"
+  | "debugger-statement"
+  | "timing-delta-probe"
+  | "clock-skew-probe"
+  | "cpu-pause-probe"
+  | "obfuscated-eval";
 
 /**
  * A spot in the source where the script puts code or content beyond
@@ -150,6 +228,14 @@ export interface NetworkSink {
    * body (GET requests, EventSource, Worker constructor, etc.).
    */
   payload: PayloadInfo | null;
+  /**
+   * When the sink's URL or payload field-names match a known anti-bot /
+   * captcha / fingerprinting infrastructure provider (see
+   * `src/knowledge/endpoints.ts`), this is set to the provider slug
+   * (e.g. `"Google Botguard"`, `"DataDome"`, `"Cloudflare Turnstile"`).
+   * Null when no match.
+   */
+  provider?: string | null;
 }
 
 /**
@@ -205,6 +291,11 @@ export interface Report {
   hazards: DynamicHazard[];
   /** Network exfiltration sinks discovered in the script. */
   networkSinks: NetworkSink[];
+  /**
+   * Multi-node structural signatures (VM bytecode dispatch, consistency
+   * cross-checks). See {@link StructuralFinding}.
+   */
+  structural: StructuralFinding[];
   unknownAccesses: RawAccess[];
   summary: {
     totalAccesses: number;
@@ -216,6 +307,29 @@ export interface Report {
     sinkCount: number;
     /** Number of distinct cataloged APIs that flow into any sink payload. */
     leakedApiCount: number;
+    /**
+     * Known anti-bot / captcha / fingerprinting providers identified
+     * across all sinks, mapped to the number of sinks that matched.
+     * Empty when no provider patterns hit. See
+     * `src/knowledge/endpoints.ts` for the full list of recognized
+     * providers and matching rules.
+     */
+    providers: Record<string, number>;
+    /**
+     * True when the VM-bytecode detector finds the
+     * large-numeric-array + switch-dispatched-function-table signature
+     * (Botguard / Kasada / Hyperion class).
+     */
+    vmBytecodeDetected: boolean;
+    /**
+     * Count of anti-debug-flavored hazards: debugger statements,
+     * timing-delta probes, clock-skew probes, CPU-pause probes,
+     * obfuscated-eval sites. Effectively the "L3/L4 layer" count from
+     * the SoK framework.
+     */
+    antiDebugTells: number;
+    /** Number of consistency-check structural findings. */
+    consistencyChecks: number;
   };
 }
 

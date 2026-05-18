@@ -16,6 +16,10 @@ import {
   type ValueOrigin,
   type ValueEntry,
 } from "./values.js";
+import {
+  classifyEndpointUrl,
+  classifyEndpointPayloadKeys,
+} from "../knowledge/endpoints.js";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -301,9 +305,18 @@ export function scanSinks(
     },
   });
 
-  // Annotate every payload with leakedApis (resolved via the catalog).
+  // Annotate every payload with leakedApis (resolved via the catalog),
+  // and classify each sink against the known-endpoint table.
   for (const sink of sinks) {
     if (sink.payload) sink.payload.leakedApis = uniqueApis(matchEntriesToApis(sink.payload.entries, opts.apis));
+
+    // Provider classification: URL match wins, payload-key match is the
+    // fallback for opaque / customer-routed URLs.
+    let provider = classifyEndpointUrl(sink.url);
+    if (!provider && sink.payload) {
+      provider = classifyEndpointPayloadKeys(sink.payload.entries.map((e) => e.key));
+    }
+    sink.provider = provider;
   }
 
   return sinks;

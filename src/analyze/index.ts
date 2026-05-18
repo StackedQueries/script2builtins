@@ -28,6 +28,10 @@ export type { WalkResult } from "./walk.js";
 export { matchAccesses } from "./match.js";
 export { scanSinks, tracePayload, parseRuntimeBody } from "./sinks.js";
 export type { SinkScanOptions, RuntimeBody } from "./sinks.js";
+export { detectVmBytecode } from "./vm-detector.js";
+export { detectConsistencyChecks, detectHighResTimer } from "./structural.js";
+export { detectCognitiveHoneypots } from "./honeypots.js";
+export { detectFaviconCacheProbes } from "./favicons.js";
 export {
   buildAliases,
   resolveChain,

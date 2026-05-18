@@ -122,6 +122,20 @@ export function classifyValue(node: any, aliases: AliasMap, source: string): Val
   if (node.type === "Literal" && (typeof node.value === "number" || typeof node.value === "boolean" || node.value === null)) {
     return { kind: "literal", value: node.value, rawSnippet: snippet(node, source) };
   }
+  // `void 0` (and `void <any-literal>`) is the minifier-canonical
+  // `undefined` placeholder. Classifying it as a literal null keeps the
+  // tracer's placeholder entries in the payload instead of bailing to
+  // "unknown" (IMPROVEMENTS.md C4). We use `null` because the
+  // ValueOrigin literal value type doesn't carry an `undefined`
+  // variant — downstream consumers treat null as "explicitly absent".
+  if (node.type === "UnaryExpression" && node.operator === "void") {
+    return { kind: "literal", value: null, rawSnippet: snippet(node, source) };
+  }
+  // `Identifier(undefined)` — not a Literal in acorn, but the global
+  // sentinel for the same value.
+  if (node.type === "Identifier" && node.name === "undefined") {
+    return { kind: "literal", value: null, rawSnippet: snippet(node, source) };
+  }
 
   // Object literal.
   if (node.type === "ObjectExpression") {
@@ -247,6 +261,15 @@ function entryFromValueExpr(key: string, valNode: any, aliases: AliasMap, source
   if (lit !== null) return { key, literalValue: lit, snippet: snippet(valNode, source) };
   if (valNode.type === "Literal" && (typeof valNode.value === "number" || typeof valNode.value === "boolean" || valNode.value === null)) {
     return { key, literalValue: valNode.value, snippet: snippet(valNode, source) };
+  }
+  // `{ x: void 0 }` — minifier-canonical undefined placeholder. Recorded
+  // as a literal-null entry so the tracer keeps it in the shape instead
+  // of bailing to opaque. (IMPROVEMENTS.md C4.)
+  if (valNode.type === "UnaryExpression" && valNode.operator === "void") {
+    return { key, literalValue: null, snippet: snippet(valNode, source) };
+  }
+  if (valNode.type === "Identifier" && valNode.name === "undefined") {
+    return { key, literalValue: null, snippet: snippet(valNode, source) };
   }
   const chain = resolveChain(valNode, aliases);
   if (chain) {

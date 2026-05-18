@@ -1,4 +1,4 @@
-import type { Report, Finding, Severity, NetworkSink } from "../types.js";
+import type { Report, Finding, Severity, NetworkSink, StructuralFinding, SokLayer } from "../types.js";
 
 export interface RenderTextOptions {
   /** Show evidence (snippets + line numbers) per finding. Default true. */
@@ -66,6 +66,15 @@ export function renderText(report: Report, options: RenderTextOptions = {}): str
   if (!report.parse.ok) {
     for (const e of report.parse.errors) lines.push(`  ${paint("!", "red", noColor)} ${e}`);
   }
+  // 30-second triage line: a single-sentence classification of what
+  // this script looks like, derived from the summary fields. Lands at
+  // the very top so analysts opening a fresh report don't need to read
+  // past the header to know what they're dealing with. (IMPROVEMENTS.md
+  // C7.)
+  const verdict = classifyScript(report);
+  if (verdict) {
+    lines.push(`${paint("verdict", "dim", noColor)}   ${paint(verdict, "magenta", noColor)}`);
+  }
   lines.push("");
 
   // Summary
@@ -78,7 +87,31 @@ export function renderText(report: Report, options: RenderTextOptions = {}): str
   lines.push(`  categories touched      ${s.categories.join(", ") || "(none)"}`);
   lines.push(`  network sinks           ${paint(String(s.sinkCount), s.sinkCount > 0 ? "magenta" : "gray", noColor)}`);
   lines.push(`  fingerprints exfiltrated ${paint(String(s.leakedApiCount), s.leakedApiCount > 0 ? "red" : "gray", noColor)}`);
+  lines.push(`  anti-debug tells        ${paint(String(s.antiDebugTells), s.antiDebugTells > 0 ? "red" : "gray", noColor)}`);
+  lines.push(`  consistency checks      ${paint(String(s.consistencyChecks), s.consistencyChecks > 0 ? "yellow" : "gray", noColor)}`);
+  lines.push(`  VM bytecode detected    ${paint(s.vmBytecodeDetected ? "yes" : "no", s.vmBytecodeDetected ? "red" : "gray", noColor)}`);
   lines.push("");
+
+  // SoK L1–L4 bucketed summary (Abel 2024). Lets readers of the
+  // anti-automation literature map findings to the framework directly.
+  const buckets = bucketByLayer(report.findings);
+  const hasAny = (["L1a", "L1b", "L2", "L3", "L4"] as SokLayer[]).some((l) => (buckets[l] ?? 0) > 0);
+  if (hasAny) {
+    lines.push(paint("layers (SoK)", "bold", noColor));
+    const ORDER: { layer: SokLayer; label: string }[] = [
+      { layer: "L1a", label: "L1a static introspection" },
+      { layer: "L1b", label: "L1b behavioral biometrics" },
+      { layer: "L2", label: "L2  source obfuscation" },
+      { layer: "L3", label: "L3  execution traps" },
+      { layer: "L4", label: "L4  chronometric integrity" },
+    ];
+    for (const { layer, label } of ORDER) {
+      const n = buckets[layer] ?? 0;
+      const color = n > 0 ? "yellow" : "gray";
+      lines.push(`  ${label.padEnd(28)} ${paint(String(n), color, noColor)}`);
+    }
+    lines.push("");
+  }
 
   // Network sinks
   if (!options.hideSinks && report.networkSinks.length > 0) {
@@ -91,6 +124,15 @@ export function renderText(report: Report, options: RenderTextOptions = {}): str
 
   if (options.sinksOnly) {
     return lines.join("\n");
+  }
+
+  // Structural findings (VM-bytecode + consistency cross-checks)
+  if (report.structural.length > 0) {
+    lines.push(paint(`structural findings (${report.structural.length})`, "bold", noColor));
+    for (const sf of report.structural) {
+      renderStructural(sf, lines, noColor);
+    }
+    lines.push("");
   }
 
   // Hazards
@@ -158,9 +200,124 @@ export function renderText(report: Report, options: RenderTextOptions = {}): str
   return lines.join("\n");
 }
 
+/**
+ * Inspect the report summary and return a one-line "what this script
+ * appears to be" classification. Returns null when nothing meaningful
+ * is detectable (e.g., an empty or trivial script).
+ *
+ * Precedence is intentional: a positively-identified provider beats a
+ * VM-bytecode finding (a Botguard VM that also matched a Cloudflare
+ * URL is *both*, but the provider is the more informative anchor),
+ * which beats a generic "VM/anti-debug" verdict, which beats
+ * fingerprinter/canvas-class buckets.
+ */
+function classifyScript(report: Report): string | null {
+  const s = report.summary;
+  const provider = topProvider(s.providers);
+  const hasVm = s.vmBytecodeDetected;
+  const antiDebug = s.antiDebugTells;
+  const consistency = s.consistencyChecks;
+
+  if (provider) {
+    if (hasVm) return `${provider} blob (VM-class anti-bot — bytecode + dispatch detected).`;
+    if (antiDebug > 0) return `${provider} telemetry (${antiDebug} anti-debug tells${consistency ? `, ${consistency} consistency check${consistency === 1 ? "" : "s"}` : ""}).`;
+    return `${provider} telemetry / fingerprinter.`;
+  }
+  if (hasVm) {
+    return `Bytecode-VM detector (Botguard / Kasada / Hyperion class). ${s.botDetectionTells} bot tells; ${antiDebug} anti-debug tells.`;
+  }
+  if (antiDebug >= 3 && consistency >= 1) {
+    return `Active anti-debug fingerprinter (${antiDebug} L3/L4 tells, ${consistency} consistency check${consistency === 1 ? "" : "s"}).`;
+  }
+  if (antiDebug >= 3) {
+    return `Active anti-debug script (${antiDebug} L3/L4 tells).`;
+  }
+  // Category-based guesses fall back to a softer verdict.
+  const cats = new Set(s.categories);
+  if (cats.has("canvas") && s.botDetectionTells > 5) return "Canvas-class fingerprinter.";
+  if (cats.has("webgl") && s.botDetectionTells > 5) return "WebGL / GPU fingerprinter.";
+  if (cats.has("audio") && s.botDetectionTells > 5) return "AudioContext fingerprinter.";
+  if (s.botDetectionTells >= 10 && s.leakedApiCount >= 3) return "Generic fingerprinting beacon.";
+  return null;
+}
+
+function topProvider(providers: Record<string, number>): string | null {
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [k, n] of Object.entries(providers)) {
+    if (n > bestCount) {
+      bestCount = n;
+      best = k;
+    }
+  }
+  return best;
+}
+
+function bucketByLayer(findings: Finding[]): Partial<Record<SokLayer, number>> {
+  const out: Partial<Record<SokLayer, number>> = {};
+  for (const f of findings) {
+    const layer = f.api.layer;
+    if (!layer) continue;
+    out[layer] = (out[layer] ?? 0) + f.count;
+  }
+  return out;
+}
+
 function formatLoc(item: { loc: { start: { line: number; column: number } } | null }): string {
   if (!item.loc) return "?:?";
   return `${item.loc.start.line}:${item.loc.start.column}`;
+}
+
+function renderStructural(sf: StructuralFinding, lines: string[], noColor: boolean): void {
+  const label = `${sf.kind}/${sf.subkind}`.padEnd(28);
+  lines.push(`  ${severityBadge(sf.severity, noColor)} ${paint(label, "bold", noColor)} ${formatLoc(sf)}`);
+  lines.push(`    ${paint(sf.description, "dim", noColor)}`);
+  if (sf.kind === "vm-bytecode") {
+    const d = sf.details as {
+      bytecodeEntries?: number;
+      bytecodeBytes?: number;
+      dispatchSwitchArms?: number;
+      indexedFunctionCallArms?: number;
+      fromCharCodeApplyCount?: number;
+    };
+    const parts = [
+      d.bytecodeEntries !== undefined ? `bytecode ${d.bytecodeEntries} entries` : "",
+      d.bytecodeBytes ? `${d.bytecodeBytes}B` : "",
+      d.dispatchSwitchArms ? `switch ${d.dispatchSwitchArms} arms` : "",
+      d.indexedFunctionCallArms ? `${d.indexedFunctionCallArms} indexed-call arms` : "",
+      d.fromCharCodeApplyCount ? `${d.fromCharCodeApplyCount}× String.fromCharCode.apply` : "",
+    ].filter(Boolean);
+    if (parts.length) lines.push(`    ${paint(parts.join("  ·  "), "yellow", noColor)}`);
+  } else if (sf.kind === "consistency-check") {
+    const d = sf.details as { members?: string[] };
+    if (d.members && d.members.length) {
+      lines.push(`    ${paint("members: " + d.members.join(", "), "yellow", noColor)}`);
+    }
+  } else if (sf.kind === "cognitive-honeypot") {
+    const d = sf.details as {
+      varName?: string;
+      tagName?: string | null;
+      evidence?: Record<string, boolean>;
+    };
+    const ev = d.evidence ?? {};
+    const flags = Object.entries(ev).filter(([, v]) => v).map(([k]) => k).join(", ");
+    const parts = [
+      d.varName ? `var ${d.varName}` : "",
+      d.tagName ? `tag ${d.tagName}` : "",
+      flags || "",
+    ].filter(Boolean);
+    if (parts.length) lines.push(`    ${paint(parts.join("  ·  "), "yellow", noColor)}`);
+  } else if (sf.kind === "high-res-timer-construction") {
+    const d = sf.details as { members?: string[] };
+    if (d.members && d.members.length) {
+      lines.push(`    ${paint("members: " + d.members.join(", "), "yellow", noColor)}`);
+    }
+  } else if (sf.kind === "favicon-cache-probe") {
+    const d = sf.details as { varName?: string | null };
+    if (d.varName) {
+      lines.push(`    ${paint("var " + d.varName, "yellow", noColor)}`);
+    }
+  }
 }
 
 function renderSink(sink: NetworkSink, lines: string[], noColor: boolean): void {

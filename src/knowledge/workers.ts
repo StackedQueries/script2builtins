@@ -49,7 +49,8 @@ export const workerApis: ApiDefinition[] = [
     key: "*.register",
     category: "workers",
     severity: "medium",
-    description: "serviceWorker.register(url). Service workers can outlive the page and run probes in the background.",
+    botDetectionTell: true,
+    description: "navigator.serviceWorker.register(url). Installs a SW — the persistence-vector entry point (2020 Awakening the Web's Sleeper Agents). The URL also leaks the SW script name, which detectors use for cache-key derivation; SWs outlive the page and continue probing in the background.",
   },
   {
     key: "importScripts",

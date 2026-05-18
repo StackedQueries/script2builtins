@@ -44,18 +44,10 @@ export const cssStyleApis: ApiDefinition[] = [
     severity: "info",
     description: "CSS selector escaping; rarely fingerprinted.",
   },
-  {
-    key: "*.cssRules",
-    category: "css",
-    severity: "medium",
-    description: "CSSStyleSheet.cssRules. Enumerating a stylesheet exposes the user agent's normalized property names and shorthand expansions.",
-  },
-  {
-    key: "document.styleSheets",
-    category: "css",
-    severity: "low",
-    description: "Live list of all stylesheets — entry point for cssRules introspection.",
-  },
+  // `*.cssRules` and `document.styleSheets` live in extensions.ts and
+  // document.ts respectively — the entries there cover both the
+  // CSS-introspection axis (this category) and the extension-detection
+  // axis (Fingerprinting in Style, 2021).
   {
     key: "CSSStyleSheet",
     category: "css",

@@ -14,6 +14,7 @@ export const canvasApis: ApiDefinition[] = [
     category: "canvas",
     severity: "high",
     botDetectionTell: true,
+    layer: "L1a",
     description: "Serializes a canvas to a base64 PNG/JPEG. The most common canvas-fingerprinting sink.",
     evasion: "Patch HTMLCanvasElement.prototype.toDataURL to perturb the underlying ImageData first; persist noise per-session for stability.",
   },
@@ -22,6 +23,7 @@ export const canvasApis: ApiDefinition[] = [
     category: "canvas",
     severity: "high",
     botDetectionTell: true,
+    layer: "L1a",
     description: "Async sibling of toDataURL — identical fingerprint risk.",
   },
   {
@@ -29,6 +31,7 @@ export const canvasApis: ApiDefinition[] = [
     category: "canvas",
     severity: "high",
     botDetectionTell: true,
+    layer: "L1a",
     description: "Reads pixel data directly. Bypasses toDataURL hooks; intercept here too if defending.",
   },
   {

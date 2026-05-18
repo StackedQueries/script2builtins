@@ -32,6 +32,7 @@
   },
   "files": [
     "dist",
+    "schemas",
     "README.md",
     "LICENSE"
   ],
@@ -40,7 +41,8 @@
     "dev": "tsc -p tsconfig.json --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm test",
+    "export-schema": "node scripts/export-schema.mjs",
+    "prepublishOnly": "npm run build && npm test && npm run export-schema",
     "cli": "node --import tsx/esm src/cli.ts"
   },
   "keywords": [

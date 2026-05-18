@@ -96,6 +96,8 @@ Flags:
 | `--source-type script\|module` | force parse mode |
 | `--no-sinks` | hide the network-sinks section |
 | `--sinks-only` | print only sinks + summary (great for `\| jq`) |
+| `--max-bytes N` | truncate each input to N bytes before parsing |
+| `--parse-only` | only run the parser; emit a one-line ok/fail |
 
 Exit code is `1` on parse failure, `2` on argument error, `0` otherwise.
 
@@ -240,6 +242,79 @@ urlencoded. This is the seam `script2builtins-runtime` uses to make
 its runtime sinks populate `leakedApis` in the same way the static
 pass does.
 
+## Pointing it at a Botguard / Cloudflare / DataDome blob
+
+The "30-second triage" the analyzer is built for is meant to look like
+this. Suppose you've fetched a Botguard challenge into `bg.js`:
+
+```sh
+script2builtins bg.js --min-severity medium --no-hits
+```
+
+The report opens with a **verdict** line that fuses the structural
+detectors and the provider classifier into one sentence — e.g.,
+`Google Botguard blob (VM-class anti-bot — bytecode + dispatch
+detected).` — followed by the summary block:
+
+```
+summary
+  total accesses          312
+  known fingerprint API   147
+  bot-detection tells     54
+  density (hits / KB)     32.5
+  network sinks           3
+  fingerprints exfiltrated 21
+  anti-debug tells        9
+  consistency checks      2
+  VM bytecode detected    yes
+
+layers (SoK)
+  L1a static introspection     98
+  L1b behavioral biometrics    11
+  L2  source obfuscation        7
+  L3  execution traps          18
+  L4  chronometric integrity   13
+```
+
+Then come three blocks that answer the questions you actually have:
+
+- **`structural findings`** — the VM-bytecode signature (B1), the
+  chronometric / clock-skew probes (B2), the UA-vs-UA-CH and
+  geometry-triangulation consistency checks (B3), and any
+  cognitive-honeypot DOM constructions (A7).
+- **`network sinks`** — every `fetch` / `XMLHttpRequest` /
+  `sendBeacon` / `WebSocket` / `Image.src` outbound, with the resolved
+  URL classified against the known anti-bot endpoint table (A6) so
+  the `provider` field on each sink tells you whether the payload is
+  going to Botguard, Cloudflare Turnstile, DataDome, Akamai, etc. The
+  payload tracer maps each body key back to the cataloged surface that
+  produced its value.
+- **`dynamic hazards`** — `debugger;` traps, `eval` / `Function`
+  variants (including `eval(atob(...))` style obfuscated-eval — B5),
+  CPU-pause busy loops (B4), and `setTimeout`/`setInterval`
+  with string arguments.
+
+The **SoK layer block** lets you cross-walk the findings to the
+academic literature directly — every cataloged entry that the
+analyzer's category-default knows about carries an L1a/L1b/L2/L3/L4
+tag derived from Abel's *SoK: Client-Side Anti-Automation After the
+VLM*.
+
+If you only care about exfiltration:
+
+```sh
+script2builtins bg.js --sinks-only --json | jq '
+  .networkSinks[] | { kind, method, url, provider,
+                       leaked: .payload.leakedApis | map(.key) }'
+```
+
+If you're triaging a 3MB Cloudflare blob and want to verify it parses
+before paying the walk cost:
+
+```sh
+script2builtins big.js --parse-only --max-bytes 4000000
+```
+
 ## What it catalogs
 
 ~460 entries across these categories (151 marked as strong
@@ -362,6 +437,12 @@ Anything that puts code beyond static reach is reported separately:
 - `with` blocks
 - `document.write` / `document.writeln`
 - Dynamic `import(...)`
+- `debugger;` statements
+- Chronometric probes: timing-delta (`performance.now() - perfStart > N`),
+  clock-skew (`Date.now() - performance.now()`), CPU-pause (tight busy
+  loop + `performance.now()` read)
+- Obfuscated `eval`: `eval(atob(...))`, `new Function(String.fromCharCode.apply(null, ...))`,
+  `eval(decodeURIComponent(escape(...)))`
 
 If a script is heavy on these you should assume it is also probing surfaces
 the static report cannot enumerate. Pair the report with a runtime hook
@@ -375,11 +456,26 @@ the static report cannot enumerate. Pair the report with a runtime hook
   The access is still emitted with a `null` segment and `hasDynamicSegment:
   true`, but the API isn't matched.
 - Properties read indirectly through `Reflect.get`, `Object.getOwnPropertyDescriptor(...).get.call(...)` patterns.
-- Anti-debug tricks like `debugger` traps or function-byte-pattern checks.
 
 These limits are inherent to a static-AST approach. For full coverage you
 need a runtime instrumentation layer; this tool is the cheap first pass
 that tells you where to point it.
+
+### Out of scope: transport-layer fingerprinting
+
+TLS / JA3 / JARM / TCP-stack / OS-network fingerprinting is **deliberately
+out of scope**. Those surfaces are only observable on the *server* side
+(or by a passive observer on the wire) — there is nothing for a static
+JS analyzer to read, because the script never touches them. If you need
+to reason about those axes, pair this analyzer with a TLS-aware client
+like [`curl_cffi`](https://github.com/yifeikong/curl_cffi),
+[`tls-client`](https://github.com/bogdanfinn/tls-client), or
+[`utls`](https://github.com/refraction-networking/utls). The papers in
+`2015 - Network-based HTTPS Client Identification Using SSL TLS
+Fingerprinting`, `2020 - TLS Fingerprinting Techniques`,
+`2021 - JA3cury`, `2021 - JARM Randomizer`, and
+`2023 - A Two-Step TLS-Based Browser fingerprinting approach` cover the
+relevant detection theory.
 
 ## Programmatic catalog
 
@@ -404,8 +500,15 @@ than reading the script.
 
 The catalog is intentionally split per category in `src/knowledge/` so
 new entries are a one-line PR. Each entry is `{ key, category, severity,
-description, botDetectionTell?, evasion?, argMatch? }`. Tests live in
-`test/`; `npm test` runs them.
+description, botDetectionTell?, evasion?, argMatch?, layer? }` — the
+optional `layer` slot takes one of `L1a` / `L1b` / `L2` / `L3` / `L4`
+from the SoK anti-automation framework (Abel 2024) and shows up in the
+report's `layers (SoK)` summary block. Tests live in `test/`; `npm test`
+runs the fast suite. Run `S2B_RUN_E2E=1 npm test` to also exercise the
+real captured detector fixtures in `test/fixtures/captured/` (Cloudflare
+Turnstile, DataDome, full reCAPTCHA challenge — refresh them with
+`node scripts/fetch-fixtures.mjs`). See [`REFERENCES.md`](REFERENCES.md)
+for the papers that anchor specific catalog entries and detectors.
 
 ## Disclaimer
 
