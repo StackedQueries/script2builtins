@@ -1,84 +1,22 @@
 {
-  "name": "script2builtins",
-  "version": "0.1.0",
-  "description": "Forensic analyzer for bot-detection / fingerprinting JavaScript. Given a script (curl dump, Puppeteer/Playwright capture, etc.) it reports which JS builtins and browser APIs are touched so you can reverse-engineer the surfaces a detector probes.",
+  "name": "script2builtins-workspace",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Monorepo root for script2builtins (static AST analyzer), script2builtins-runtime (Playwright-driven dynamic analyzer), and script2builtins-knowledge (shared API catalog). Each package versions and publishes independently; the root is private and exists only to coordinate installs, builds, and tests.",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": {
-    "script2builtins": "./dist/cli.js"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./knowledge": {
-      "types": "./dist/knowledge/index.d.ts",
-      "import": "./dist/knowledge/index.js"
-    },
-    "./analyze": {
-      "types": "./dist/analyze/index.d.ts",
-      "import": "./dist/analyze/index.js"
-    },
-    "./report": {
-      "types": "./dist/report/text.d.ts",
-      "import": "./dist/report/text.js"
-    },
-    "./types": {
-      "types": "./dist/types.d.ts",
-      "import": "./dist/types.js"
-    }
-  },
-  "files": [
-    "dist",
-    "schemas",
-    "README.md",
-    "LICENSE"
+  "workspaces": [
+    "packages/script2builtins-knowledge",
+    "packages/script2builtins",
+    "packages/script2builtins-runtime"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "export-schema": "node scripts/export-schema.mjs",
-    "prepublishOnly": "npm run build && npm test && npm run export-schema",
-    "cli": "node --import tsx/esm src/cli.ts"
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "clean": "rm -rf packages/*/dist packages/*/node_modules node_modules"
   },
-  "keywords": [
-    "bot-detection",
-    "fingerprinting",
-    "anti-bot",
-    "scraping",
-    "puppeteer",
-    "playwright",
-    "ast",
-    "static-analysis",
-    "forensics",
-    "reverse-engineering"
-  ],
-  "author": "Tyler Richards <tyler@richards.foo>",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/StackedQueries/script2builtins.git"
-  },
-  "bugs": {
-    "url": "https://github.com/StackedQueries/script2builtins/issues"
-  },
-  "homepage": "https://github.com/StackedQueries/script2builtins#readme",
   "engines": {
     "node": ">=20"
   },
-  "dependencies": {
-    "acorn": "^8.12.1",
-    "acorn-walk": "^8.3.4"
-  },
-  "devDependencies": {
-    "@types/estree": "^1.0.9",
-    "@types/node": "^20.14.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.5.0",
-    "vitest": "^2.1.0"
-  }
+  "license": "MIT"
 }
