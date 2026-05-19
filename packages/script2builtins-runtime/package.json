@@ -1,6 +1,6 @@
 {
   "name": "script2builtins-runtime",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Runtime instrumentation companion to script2builtins. Drives a real browser, traps every catalog API + sink + dynamic-execution point, and emits findings in the same shape the static analyzer produces.",
   "type": "module",
   "main": "./dist/index.js",

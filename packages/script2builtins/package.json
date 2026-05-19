@@ -1,6 +1,6 @@
 {
   "name": "script2builtins",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Forensic analyzer for bot-detection / fingerprinting JavaScript. Given a script (curl dump, Puppeteer/Playwright capture, etc.) it reports which JS builtins and browser APIs are touched so you can reverse-engineer the surfaces a detector probes.",
   "type": "module",
   "main": "./dist/index.js",
