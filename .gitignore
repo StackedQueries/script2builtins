@@ -1,4 +1,5 @@
 node_modules/
+node_modules/**
 dist/
 *.log
 .DS_Store
@@ -7,5 +8,22 @@ dist/
 coverage/
 .vitest-cache/
 *.tgz
-.github/
 .playwright-mcp/
+
+# per-package build artifacts and run output
+packages/*/dist/
+packages/*/node_modules/
+packages/*/runs/
+packages/*/output/
+packages/*/tsconfig.tsbuildinfo
+packages/*/.vitest-cache/
+packages/*/.playwright-mcp/
+
+# legacy nested git repo inside packages/script2builtins-runtime/
+# (documented in RELEASING.md → "Nested runtime git")
+packages/script2builtins-runtime/.git/
+
+# jekyll docs build (per-package)
+packages/*/docs/_site/
+packages/*/docs/.jekyll-cache/
+packages/*/docs/Gemfile.lock

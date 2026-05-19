@@ -1,0 +1,94 @@
+{
+  "name": "script2builtins-runtime",
+  "version": "0.1.0",
+  "description": "Runtime instrumentation companion to script2builtins. Drives a real browser, traps every catalog API + sink + dynamic-execution point, and emits findings in the same shape the static analyzer produces.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "s2b": "./dist/cli.js",
+    "s2b-runtime": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./trap": {
+      "types": "./dist/trap/index.d.ts",
+      "import": "./dist/trap/index.js"
+    },
+    "./runner": {
+      "types": "./dist/runner/index.d.ts",
+      "import": "./dist/runner/index.js"
+    },
+    "./report": {
+      "types": "./dist/report/index.d.ts",
+      "import": "./dist/report/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run test/trap test/runner",
+    "test:e2e": "vitest run test/e2e",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "cli": "node --import tsx/esm src/cli.ts",
+    "schema": "node scripts/export-schema.mjs > docs/reportSchema.json",
+    "docs:serve": "cd docs && bundle exec jekyll serve",
+    "prepublishOnly": "npm run build && npm run test:unit"
+  },
+  "keywords": [
+    "bot-detection",
+    "fingerprinting",
+    "anti-bot",
+    "playwright",
+    "runtime-instrumentation",
+    "dynamic-analysis",
+    "forensics"
+  ],
+  "author": "Tyler Richards <tyler@richards.foo>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/StackedQueries/script2builtins.git",
+    "directory": "packages/script2builtins-runtime"
+  },
+  "bugs": {
+    "url": "https://github.com/StackedQueries/script2builtins/issues"
+  },
+  "homepage": "https://github.com/StackedQueries/script2builtins/tree/master/packages/script2builtins-runtime#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "script2builtins": "^0.1.0",
+    "script2builtins-knowledge": "^0.1.0"
+  },
+  "peerDependencies": {
+    "playwright": "^1.47.0"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "playwright": "^1.47.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.1.0"
+  }
+}

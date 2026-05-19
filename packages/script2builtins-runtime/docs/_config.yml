@@ -1,0 +1,44 @@
+title: script2builtins-runtime
+description: Runtime instrumentation companion to script2builtins. Trap-driven dynamic analysis for bot-detection / fingerprinting JavaScript.
+theme: jekyll-theme-cayman
+markdown: kramdown
+kramdown:
+  syntax_highlighter: rouge
+  input: GFM
+  hard_wrap: false
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+navigation:
+  - title: Overview
+    url: /
+  - title: Architecture
+    url: /architecture/
+  - title: Execution flow
+    url: /execution-flow/
+  - title: Trap internals
+    url: /trap-internals/
+  - title: Static vs runtime
+    url: /static-vs-runtime/
+  - title: Recipes
+    url: /recipes/
+  - title: Catalog reference
+    url: /catalog/
+  - title: Limits
+    url: /limits/
+  - title: Stealth mode
+    url: /stealth-mode/
+  - title: Design review
+    url: /design-review/
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+
+permalink: /:path/
