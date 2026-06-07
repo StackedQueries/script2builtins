@@ -171,4 +171,20 @@ export const webrtcApis: ApiDefinition[] = [
     description: "RTCSessionDescription.sdp. The full SDP text containing every codec, header extension, and ICE candidate the offer/answer expressed. High-entropy fingerprint axis — the codec ordering alone can pin a UA's actual engine version.",
     botDetectionTell: true,
   },
+  {
+    key: "RTCRtpSender.getCapabilities",
+    category: "webrtc",
+    severity: "medium",
+    layer: "L1a",
+    botDetectionTell: true,
+    description: "Static enumeration of supported send codecs / header-extensions. Codec list and ordering are an engine/OS fingerprint axis available without ever constructing a peer connection.",
+  },
+  {
+    key: "RTCRtpReceiver.getCapabilities",
+    category: "webrtc",
+    severity: "medium",
+    layer: "L1a",
+    botDetectionTell: true,
+    description: "Static enumeration of supported receive codecs / header-extensions. Paired with the sender capabilities for a high-entropy, instance-free WebRTC codec fingerprint.",
+  },
 ];

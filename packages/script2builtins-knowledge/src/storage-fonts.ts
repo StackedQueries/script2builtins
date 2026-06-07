@@ -149,4 +149,13 @@ export const storageFontsApis: ApiDefinition[] = [
     severity: "info",
     description: "navigator.serviceWorker.ready. Awaitable that resolves once the active SW is in control.",
   },
+  {
+    key: "queryLocalFonts",
+    category: "fonts",
+    severity: "high",
+    botDetectionTell: true,
+    layer: "L1a",
+    description: "Local Font Access API (window.queryLocalFonts). Permission-gated enumeration of the full installed font set — extremely high entropy. Presence of the API and the granted/denied/empty result are all tells; headless has no real font set.",
+    evasion: "Gate behind a realistic permission flow and return a font list matching the spoofed OS; an empty or API-absent result under a 'real Chrome' UA is a contradiction.",
+  },
 ];

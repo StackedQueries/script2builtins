@@ -275,4 +275,11 @@ export const headlessTellApis: ApiDefinition[] = [
     botDetectionTell: true,
     description: "Reading outerHeight on the prototype side-steps instance-level overrides; 0 confirms headless.",
   },
+  {
+    key: "getEventListeners",
+    category: "headless-tells",
+    severity: "high",
+    botDetectionTell: true,
+    description: "DevTools command-line API helper. Only defined when evaluation runs with includeCommandLineAPI (CDP Runtime.evaluate). A defined `getEventListeners` in page scope betrays a CDP/automation evaluation context (StableBrowse, 'reading challenge scripts').",
+  },
 ];

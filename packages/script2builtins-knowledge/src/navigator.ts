@@ -467,4 +467,26 @@ export const navigatorApis: ApiDefinition[] = [
     severity: "medium",
     description: "Common fingerprint-exfiltration sink used by ebay/microsoft/stackoverflow/washingtonpost trackers (EssentialFP 2020). Listed here because the call signals 'tracker' even when the body is opaque.",
   },
+  {
+    key: "navigator.vibrate",
+    category: "navigator",
+    severity: "low",
+    layer: "L1a",
+    description: "Vibration API. Presence/behavior varies by platform (no-op on desktop, gated on mobile); a long-standing device-class tell ('Most Websites Don't Need to Vibrate', 2017). Automation often mismatches the expected platform behavior.",
+    evasion: "Match presence and the no-op boolean return to the spoofed platform; desktop Chrome exposes it but it returns true without effect.",
+  },
+  {
+    key: "navigator.windowControlsOverlay",
+    category: "navigator",
+    severity: "low",
+    layer: "L1a",
+    description: "PWA window-controls-overlay surface. Present in Chromium; its .visible state / getTitlebarAreaRect() is an installed-PWA / display-mode tell that headless contexts get wrong.",
+  },
+  {
+    key: "navigator.xr",
+    category: "navigator",
+    severity: "low",
+    layer: "L1a",
+    description: "WebXR entry point. Presence and xr.isSessionSupported() responses form a feature-detection tell; absent in many headless builds.",
+  },
 ];

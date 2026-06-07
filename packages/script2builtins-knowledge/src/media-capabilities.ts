@@ -45,4 +45,12 @@ export const mediaCapabilitiesApis: ApiDefinition[] = [
     severity: "medium",
     description: "Static codec probe for recording. Smaller variation than MediaSource but still a fingerprint axis.",
   },
+  {
+    key: "*.isConfigSupported",
+    category: "media-capabilities",
+    severity: "medium",
+    layer: "L1a",
+    botDetectionTell: true,
+    description: "WebCodecs static probe — VideoEncoder/VideoDecoder/AudioEncoder/AudioDecoder.isConfigSupported(). Enumerates hardware/software codec support and acceleration, a GPU/OS-class fingerprint independent of any media element.",
+  },
 ];
