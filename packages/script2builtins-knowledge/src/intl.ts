@@ -3,8 +3,8 @@ import type { ApiDefinition } from "./types.js";
 /**
  * Intl.* APIs. Locale/timezone resolution is one of the strongest cross-OS
  * fingerprint axes — ICU build, CLDR version, and host-platform locale data
- * all show through Intl outputs. CreepJS uses formatted strings from every
- * Intl constructor for its locale-system signature.
+ * all show through Intl outputs. Fingerprinting suites use formatted strings
+ * from every Intl constructor for a locale-system signature.
  */
 export const intlApis: ApiDefinition[] = [
   {
@@ -32,7 +32,7 @@ export const intlApis: ApiDefinition[] = [
     category: "intl",
     severity: "medium",
     botDetectionTell: true,
-    description: "of(code) returns localized language/region/script names. CreepJS uses it as a high-signal locale-system axis — different platforms ship different display-name tables.",
+    description: "of(code) returns localized language/region/script names. Used as a high-signal locale-system axis — different platforms ship different display-name tables.",
   },
   {
     key: "Intl.ListFormat",
@@ -51,7 +51,7 @@ export const intlApis: ApiDefinition[] = [
     category: "intl",
     severity: "medium",
     botDetectionTell: true,
-    description: "format(value, unit) returns 'in 3 days', 'next year', etc. Strong locale-system fingerprint axis used by CreepJS.",
+    description: "format(value, unit) returns 'in 3 days', 'next year', etc. Strong locale-system fingerprint axis.",
   },
   {
     key: "Intl.Locale",
