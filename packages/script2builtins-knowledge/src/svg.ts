@@ -4,8 +4,8 @@ import type { ApiDefinition } from "./types.js";
  * SVG geometry probes. SVGGraphicsElement.getBBox and the SVGTextContentElement
  * length methods rasterize text against the system font stack and return
  * sub-pixel measurements — alternative path to fillText/measureText that
- * stealth shims often forget to patch. CreepJS extracts a separate
- * "SVGRect" hash from these calls.
+ * stealth shims often forget to patch. Fingerprinting suites extract a
+ * separate "SVGRect" hash from these calls.
  */
 export const svgApis: ApiDefinition[] = [
   {

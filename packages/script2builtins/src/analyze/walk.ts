@@ -734,6 +734,26 @@ function synthesizeTrampolineAccess(
     }
   }
 
+  // Form 3: target.__lookupGetter__("prop")  (optionally `.call(receiver)`,
+  // which is a separate outer CallExpression the walker also visits — we
+  // only need to resolve the inner __lookupGetter__ call here). Collapses to
+  // `target.prop` so `navigator.__lookupGetter__('webdriver').call(navigator)`
+  // still surfaces navigator.webdriver. The CreepJS "lies detector" reads
+  // getters exactly this way.
+  if (
+    callee.type === "MemberExpression" &&
+    !callee.computed &&
+    callee.property?.type === "Identifier" &&
+    callee.property.name === "__lookupGetter__"
+  ) {
+    const target = callee.object;
+    const prop = call.arguments?.[0];
+    const targetChain = chainOfRoot(target, aliases);
+    const propStr = resolveStaticString(prop, aliases);
+    if (!targetChain || propStr === null) return null;
+    return { chain: [...targetChain, propStr] };
+  }
+
   return null;
 }
 

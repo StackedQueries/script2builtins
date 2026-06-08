@@ -5,8 +5,8 @@ import type { ApiDefinition } from "./types.js";
  *
  * 1. Enumerate getComputedStyle(element) keys/values for browser- and
  *    OS-specific CSS properties — total key count differs by engine version
- *    (Chrome 113 has 1317 keys, FF differs). Used by CreepJS's
- *    "Computed Style" probe.
+ *    (Chrome 113 has 1317 keys, FF differs). Used by computed-style
+ *    fingerprint probes.
  *
  * 2. Element-geometry / font-rendering inference via getComputedStyle.
  *    Reading `inlineSize`/`blockSize` of an absolutely-positioned text node
@@ -70,7 +70,7 @@ export const cssStyleApis: ApiDefinition[] = [
     key: "*.inlineSize",
     category: "css",
     severity: "medium",
-    description: "CSSStyleDeclaration.inlineSize. Sub-pixel logical-axis width of a rendered text node — alternative font-metric path that doesn't touch canvas. Used by CreepJS for emoji width fingerprints.",
+    description: "CSSStyleDeclaration.inlineSize. Sub-pixel logical-axis width of a rendered text node — alternative font-metric path that doesn't touch canvas. Used for emoji width fingerprints.",
     botDetectionTell: true,
   },
   {

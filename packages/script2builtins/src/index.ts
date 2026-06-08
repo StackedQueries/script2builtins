@@ -117,7 +117,9 @@ export function analyze(source: string, options: AnalyzeOptions = {}): Report {
   const name = options.name ?? "<input>";
   const snippetLength = options.snippetLength ?? DEFAULT_SNIPPET;
   const lines = countLines(source);
-  const bytes = Buffer.byteLength(source, "utf8");
+  // Isomorphic UTF-8 byte length — works in the browser (no Node Buffer), so
+  // the analyzer can run client-side (e.g. xray-scanner's script cross-reference).
+  const bytes = new TextEncoder().encode(source).length;
 
   const { program, info } = parse(source, options.sourceType);
 

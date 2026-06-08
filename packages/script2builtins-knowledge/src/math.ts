@@ -6,7 +6,7 @@ import type { ApiDefinition } from "./types.js";
  * Firefox (different fdlibm fork), Safari (libm), and Node (V8/fdlibm) produce
  * subtly different doubles for inputs like `Math.tan(-1e300)`, `Math.acos(0.123456789)`,
  * and `Math.atanh(0.5)`. Tor Browser and other anti-fp tooling re-implement these
- * deterministically — which is itself a tell. CreepJS hashes ~20 of these values.
+ * deterministically — which is itself a tell. Public fingerprinting suites hash ~20 of these values.
  */
 export const mathApis: ApiDefinition[] = [
   {
@@ -39,7 +39,7 @@ export const mathApis: ApiDefinition[] = [
     key: "Math.atan",
     category: "math",
     severity: "medium",
-    description: "Inverse tangent. CreepJS staple input.",
+    description: "Inverse tangent. A staple math-fingerprint input.",
     botDetectionTell: true,
   },
   {

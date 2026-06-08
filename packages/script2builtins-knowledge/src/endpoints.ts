@@ -12,7 +12,7 @@
  *   - 2020 - Web Runner 2049: Evaluating Third-Party Anti-Bot Services.
  *   - 2020 - Inside The Black Box: A Glimpse Of Google's Internal Data
  *     Free-For-All.
- *   - public traces in `prescience-data/dark-knowledge` and CreepJS.
+ *   - public traces in `prescience-data/dark-knowledge` and public fingerprinting suites.
  *
  * The list is intentionally conservative — entries here should be
  * unambiguous (no legitimate-traffic false positives) so an analyst

@@ -426,6 +426,26 @@ Fingerprinting Survey).
   `getContext("webgpu")` are routed to different categories.
   `getExtension("WEBGL_debug_renderer_info")` is split out as the
   unmasked-renderer trick.
+- **String-array tables.** The `_0x1234` const string-tables commercial
+  obfuscators index into — `navigator[_0x1234[0x3]]`,
+  `document[_0x[i]]` — are folded back to the real key, including a simple
+  decoder function `function d(i){ return _0x[i - 0x10]; }`. Tables that
+  are **rotated/shuffled at runtime** (the push/shift IIFE
+  javascript-obfuscator emits) are detected and *deliberately skipped* —
+  statically indexing a rotated table would yield a wrong match, so a miss
+  is preferred (the obfuscated access still surfaces as a hazard).
+- **Arithmetic / JSFuck folding.** Constant numeric and string expressions
+  used as keys or indices are folded: `_0x[1+1]`, hex `0x2`,
+  `String.fromCharCode(119,…)`, and JSFuck primitives
+  (`+[]`→0, `!+[]`, `+!+[]`→1, `[+!+[]]+[+[]]`→`"10"`).
+- **Escapes.** Hex/unicode/octal string escapes (`'\x77\x65…'`,
+  `'w…'`) are decoded by the parser before matching.
+- **Reflective getters.** `Reflect.get(navigator, "webdriver")`,
+  `navigator.__lookupGetter__("webdriver").call(…)`, and the inline
+  `Object.getOwnPropertyDescriptor(navigator, "webdriver").get.call(…)`
+  trampoline are collapsed to the underlying property
+  (`navigator.webdriver`) so catalog matches still fire — this is exactly
+  how the CreepJS "lies detector" reads spoofed getters.
 
 ## Hazards
 
@@ -451,11 +471,20 @@ the static report cannot enumerate. Pair the report with a runtime hook
 
 ## What it cannot see
 
-- Code that exists only inside `eval` / `Function` strings.
-- Reflective access through fully dynamic keys (`obj[someExpression()]`).
+- Code that exists only inside `eval` / `Function` strings. The tool does
+  **not** build an evaluator — these stay reported hazards (see above). The
+  constant-folder folds *literals*, never runs the VM.
+- Keys behind a genuinely dynamic value (`obj[someRuntimeExpression()]`).
   The access is still emitted with a `null` segment and `hasDynamicSegment:
   true`, but the API isn't matched.
-- Properties read indirectly through `Reflect.get`, `Object.getOwnPropertyDescriptor(...).get.call(...)` patterns.
+- **Rotated/shuffled string tables.** When a `_0x` table is reordered at
+  runtime by the obfuscator's rotate IIFE, static order is unknown, so the
+  table is excluded rather than mis-resolved (a wrong match is worse than a
+  miss). The access still surfaces as an obfuscation hazard.
+- Reflective getters split across variables
+  (`var d = Object.getOwnPropertyDescriptor(o, "k"); d.get.call(o)`) — only
+  the inline trampoline form is collapsed. `Reflect.get` and
+  `__lookupGetter__` *are* resolved (see "What it sees through").
 
 These limits are inherent to a static-AST approach. For full coverage you
 need a runtime instrumentation layer; this tool is the cheap first pass
