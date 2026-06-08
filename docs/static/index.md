@@ -1,12 +1,12 @@
 ---
-title: script2builtins
+title: script2builtins (static analyzer)
 nav_order: 1
 ---
 
 # script2builtins
 
 `script2builtins` is the **static** half of the
-[script2builtins](https://github.com/StackedQueries/script2builtins) toolchain.
+[script2builtins](../) toolchain.
 You feed it a script — a `curl` dump of `https://detector.example/check.js`,
 a Playwright page-source capture, an Akamai / DataDome / PerimeterX /
 Cloudflare blob, anything that parses as JavaScript — and it tells you,
@@ -78,7 +78,7 @@ The static pass cannot see four classes of thing: code constructed
 inside `eval` / `Function` strings, fully dynamic property keys,
 `Reflect.get` / descriptor-getter trampolines, and anti-debug
 surfaces. The companion package
-[`script2builtins-runtime`](https://github.com/StackedQueries/script2builtins/tree/main/packages/script2builtins-runtime)
+[`script2builtins-runtime`](../runtime/)
 drives a real Chromium browser, traps every catalog API + sink +
 dynamic-execution point, and emits findings in the same shape this
 package produces. The two compose into one unified report — see

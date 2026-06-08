@@ -317,7 +317,7 @@ script2builtins big.js --parse-only --max-bytes 4000000
 
 ## What it catalogs
 
-~460 entries across these categories (151 marked as strong
+551 entries across these categories (192 marked as strong
 bot-detection tells):
 
 - **navigator** — `userAgent`, `webdriver`, `plugins`, `languages`,

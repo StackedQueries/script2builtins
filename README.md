@@ -15,7 +15,7 @@ This repository is the npm-workspace root for three packages:
 npm install                  # bootstraps all three packages (creates symlinks under node_modules/)
 npm run build                # tsc -p in every package
 npm run typecheck            # tsc --noEmit in every package
-npm test                     # vitest run in every package (knowledge: 5/5, s2b: 194/214 default-passing, runtime: 94/94)
+npm test                     # vitest run in every package (knowledge: 5/5, s2b: 209/229 default-passing, runtime: 94/94)
 ```
 
 Per-package scripts still work from `packages/<name>/`:

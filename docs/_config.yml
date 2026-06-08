@@ -1,5 +1,5 @@
-title: script2builtins-runtime
-description: Runtime instrumentation companion to script2builtins. Trap-driven dynamic analysis for bot-detection / fingerprinting JavaScript.
+title: script2builtins
+description: Forensic toolchain for bot-detection / browser-fingerprinting JavaScript — a shared API catalog, a static AST analyzer, and a Playwright-driven runtime analyzer that all speak the same report shape.
 theme: jekyll-theme-cayman
 markdown: kramdown
 kramdown:
@@ -13,32 +13,59 @@ defaults:
     values:
       layout: default
 
+# Grouped navigation across the three packages. (The cayman theme does not
+# render this on its own; the landing page and in-page links are the primary
+# navigation. Kept here as a machine-readable index of the site.)
 navigation:
   - title: Overview
     url: /
-  - title: Architecture
-    url: /architecture/
-  - title: Execution flow
-    url: /execution-flow/
-  - title: Trap internals
-    url: /trap-internals/
-  - title: Static vs runtime
-    url: /static-vs-runtime/
-  - title: Recipes
-    url: /recipes/
-  - title: Catalog reference
-    url: /catalog/
-  - title: Limits
-    url: /limits/
-  - title: Stealth mode
-    url: /stealth-mode/
-  - title: Design review
-    url: /design-review/
+  - title: knowledge (shared catalog)
+    children:
+      - title: Catalog reference
+        url: /knowledge/
+  - title: script2builtins (static analyzer)
+    children:
+      - title: Overview
+        url: /static/
+      - title: Architecture
+        url: /static/architecture.html
+      - title: Analysis flow
+        url: /static/analysis-flow.html
+      - title: Payload tracer
+        url: /static/payload-tracer.html
+      - title: Catalog reference
+        url: /static/catalog.html
+      - title: Recipes
+        url: /static/recipes.html
+      - title: Limits
+        url: /static/limits.html
+      - title: Design review
+        url: /static/design-review.html
+  - title: script2builtins-runtime (dynamic analyzer)
+    children:
+      - title: Overview
+        url: /runtime/
+      - title: Architecture
+        url: /runtime/architecture.html
+      - title: Execution flow
+        url: /runtime/execution-flow.html
+      - title: Trap internals
+        url: /runtime/trap-internals.html
+      - title: Static vs runtime
+        url: /runtime/static-vs-runtime.html
+      - title: Recipes
+        url: /runtime/recipes.html
+      - title: Catalog reference
+        url: /runtime/catalog.html
+      - title: Limits
+        url: /runtime/limits.html
+      - title: Stealth mode
+        url: /runtime/stealth-mode.html
+      - title: Design review
+        url: /runtime/design-review.html
 
 exclude:
   - Gemfile
   - Gemfile.lock
   - node_modules
   - vendor
-
-permalink: /:path/
