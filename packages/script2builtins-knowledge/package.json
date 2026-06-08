@@ -1,6 +1,6 @@
 {
   "name": "script2builtins-knowledge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared API catalog for the script2builtins family: ALL_APIS, the watched-root index, the endpoint classifier, and the catalog-shape types (ApiDefinition, Severity, SokLayer). Consumed by both script2builtins (static analyzer) and script2builtins-runtime (dynamic analyzer); ships independently so catalog updates don't require a static-analyzer release.",
   "type": "module",
   "main": "./dist/index.js",
