@@ -4,8 +4,9 @@ export const windowScreenApis: ApiDefinition[] = [
   {
     key: "screen.width",
     category: "screen",
-    severity: "low",
-    description: "Physical display width in CSS pixels.",
+    severity: "medium",
+    botDetectionTell: true,
+    description: "Physical display width. With height, 800x600 is the Chromium headless default — a headless tell.",
   },
   {
     key: "screen.height",
@@ -16,14 +17,16 @@ export const windowScreenApis: ApiDefinition[] = [
   {
     key: "screen.availWidth",
     category: "screen",
-    severity: "low",
-    description: "Available width minus OS chrome (taskbar, dock).",
+    severity: "medium",
+    botDetectionTell: true,
+    description: "Available width minus OS chrome. availWidth === screen.width (no taskbar/dock reserved) is a headless tell.",
   },
   {
     key: "screen.availHeight",
     category: "screen",
-    severity: "low",
-    description: "Available height minus OS chrome.",
+    severity: "medium",
+    botDetectionTell: true,
+    description: "Available height minus OS chrome. availHeight === screen.height is a headless tell — real desktops reserve menu-bar/dock space.",
   },
   {
     key: "screen.colorDepth",
